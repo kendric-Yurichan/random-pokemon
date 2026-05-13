@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random Pokémon</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --type1: #68a0e8;
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--type1) 30%, #0f0f1a), #0f0f1a 60%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      padding: 24px 16px 48px;
+      transition: background 0.6s ease;
+    }
+
+    .site-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(12px, 3vw, 16px);
+      color: #fff;
+      text-shadow: 3px 3px 0 color-mix(in srgb, var(--type1) 70%, #000);
+      letter-spacing: 1px;
+      text-align: center;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 400px;
+      padding: 32px 28px 28px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+      animation: cardIn .4s cubic-bezier(.34,1.56,.64,1);
+    }
+
+    .dex-number {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: rgba(255,255,255,.4);
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+
+    .sprite-wrap {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto 8px;
+    }
+
+    .sprite-bg {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, rgba(255,255,255,.25), rgba(255,255,255,.04));
+    }
+
+    .sprite {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transition: opacity .3s, transform .3s;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,.4));
+    }
+    .sprite.loading { opacity: 0; transform: scale(.85); }
+
+    .pokemon-name {
+      font-family: 'Press Start 2P', monospace;
+      font-size: clamp(13px, 4vw, 18px);
+      color: #fff;
+      text-transform: capitalize;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .types { display: flex; justify-content: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .type-badge {
+      padding: 5px 16px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+      border: 1.5px solid rgba(255,255,255,.25);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 20px;
+      padding: 12px 0;
+      border-top: 1px solid rgba(255,255,255,.1);
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    .info-item { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .info-label { font-size: 10px; color: rgba(255,255,255,.4); letter-spacing: 2px; text-transform: uppercase; }
+    .info-value { font-size: 15px; font-weight: 700; color: #fff; }
+
+    .stats { width: 100%; margin-bottom: 24px; }
+    .stat-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+    .stat-name { font-size: 9px; color: rgba(255,255,255,.5); letter-spacing: 1px; text-transform: uppercase; width: 46px; text-align: right; flex-shrink: 0; }
+    .stat-num  { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.8); width: 28px; text-align: right; flex-shrink: 0; }
+    .stat-bar-wrap { flex: 1; background: rgba(255,255,255,.1); border-radius: 4px; height: 6px; overflow: hidden; }
+    .stat-bar { height: 100%; border-radius: 4px; background: var(--type1); transition: width .6s cubic-bezier(.4,0,.2,1), background .5s; box-shadow: 0 0 6px var(--type1); }
+
+    .abilities { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 24px; }
+    .ability-badge {
+      font-size: 10px; letter-spacing: 1px; text-transform: capitalize;
+      color: rgba(255,255,255,.6); background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.15); border-radius: 6px; padding: 4px 10px;
+    }
+    .ability-badge.hidden {
+      color: color-mix(in srgb, var(--type1) 90%, #fff);
+      border-color: color-mix(in srgb, var(--type1) 60%, transparent);
+    }
+
+    .roll-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 16px;
+      background: var(--type1); border: none; border-radius: 12px;
+      font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff;
+      letter-spacing: 2px; cursor: pointer;
+      transition: background .3s, transform .1s, box-shadow .3s;
+      box-shadow: 0 4px 20px color-mix(in srgb, var(--type1) 50%, transparent);
+      text-shadow: 0 1px 3px rgba(0,0,0,.3);
+      position: relative; overflow: hidden;
+    }
+    .roll-btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,.2) 0%, transparent 60%); }
+    .roll-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px color-mix(in srgb, var(--type1) 60%, transparent); }
+    .roll-btn:active { transform: translateY(0); }
+    .roll-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .pokeball-icon { width: 22px; height: 22px; }
+    .roll-btn.spinning .pokeball-icon { animation: spin .4s linear infinite; }
+
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      border-radius: 8px;
+    }
+
+    .loading-state { display: none; }
+    .loading-state.visible { display: block; }
+    .pokemon-data.hidden { display: none; }
+
+    .error-msg { color: #ff6b6b; font-size: 12px; letter-spacing: 1px; text-align: center; padding: 12px 0; display: none; }
+    .error-msg.visible { display: block; }
+
+    .hint { font-size: 11px; color: rgba(255,255,255,.3); letter-spacing: 2px; text-transform: uppercase; margin-top: 20px; text-align: center; }
+
+    @keyframes cardIn    { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+    @keyframes spin      { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes shimmer   { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .pokemon-data { animation: fadeSlide .35s ease; }
+  </style>
+</head>
+<body>
+
+<div class="site-title">⚡ Random<br>Pokémon ⚡</div>
+
+<div class="card" id="card">
+  <div class="loading-state" id="loading-state">
+    <div class="sprite-wrap">
+      <div class="sprite-bg skeleton" style="border-radius:50%;position:absolute;inset:0;"></div>
+    </div>
+    <div class="skeleton" style="height:22px;width:60%;margin:16px auto 12px;border-radius:6px;"></div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:20px;">
+      <div class="skeleton" style="height:26px;width:70px;border-radius:999px;"></div>
+      <div class="skeleton" style="height:26px;width:70px;border-radius:999px;"></div>
+    </div>
+    <div style="margin-bottom:20px;">
+      <div class="skeleton" style="height:8px;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skeleton" style="height:8px;width:85%;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skeleton" style="height:8px;width:70%;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skeleton" style="height:8px;width:80%;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skeleton" style="height:8px;width:60%;margin-bottom:10px;border-radius:4px;"></div>
+      <div class="skeleton" style="height:8px;width:75%;border-radius:4px;"></div>
+    </div>
+    <div class="skeleton" style="height:52px;border-radius:12px;"></div>
+  </div>
+
+  <div class="pokemon-data hidden" id="pokemon-data">
+    <div class="dex-number" id="dex-number">#000</div>
+    <div class="sprite-wrap">
+      <div class="sprite-bg" id="sprite-bg"></div>
+      <img class="sprite loading" id="sprite" src="" alt="" />
+    </div>
+    <div class="pokemon-name" id="pokemon-name">???</div>
+    <div class="types" id="types"></div>
+    <div class="info-row">
+      <div class="info-item"><span class="info-label">Height</span><span class="info-value" id="height">—</span></div>
+      <div class="info-item"><span class="info-label">Weight</span><span class="info-value" id="weight">—</span></div>
+      <div class="info-item"><span class="info-label">Base Exp</span><span class="info-value" id="base-exp">—</span></div>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="abilities" id="abilities"></div>
+    <button class="roll-btn" id="roll-btn">
+      <svg class="pokeball-icon" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2"/>
+        <path d="M2 12 H22" stroke="white" stroke-width="2"/>
+        <circle cx="12" cy="12" r="3" fill="white"/>
+        <path d="M2 12 C2 6.5 6.5 2 12 2" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+      </svg>
+      Roll!
+    </button>
+    <div class="error-msg" id="error-msg">Failed to fetch. Try again!</div>
+  </div>
+</div>
+
+<div class="hint">Press Roll or press Space / Enter</div>
+
+<script>
+  const TYPE_COLORS = {
+    normal:'#9a9a7a', fire:'#f57c00', water:'#1976d2', electric:'#f9a825',
+    grass:'#388e3c', ice:'#00acc1', fighting:'#b71c1c', poison:'#7b1fa2',
+    ground:'#ef6c00', flying:'#7986cb', psychic:'#e91e63', bug:'#827717',
+    rock:'#78550b', ghost:'#4a148c', dragon:'#311b92', dark:'#37474f',
+    steel:'#546e7a', fairy:'#d81b60',
+  };
+
+  const STAT_LABELS = {
+    hp:'HP', attack:'ATK', defense:'DEF',
+    'special-attack':'SpAtk', 'special-defense':'SpDef', speed:'SPD',
+  };
+
+  let isFetching = false;
+
+  function setTypeColor(typeName) {
+    document.documentElement.style.setProperty('--type1', TYPE_COLORS[typeName] || '#607d8b');
+  }
+
+  async function fetchRandom() {
+    if (isFetching) return;
+    isFetching = true;
+    const btn = document.getElementById('roll-btn');
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    document.getElementById('error-msg').classList.remove('visible');
+    const dataEl = document.getElementById('pokemon-data');
+    const loadEl = document.getElementById('loading-state');
+    if (dataEl.classList.contains('hidden')) {
+      loadEl.classList.add('visible');
+    } else {
+      document.getElementById('sprite').classList.add('loading');
+    }
+    const id = Math.floor(Math.random() * 898) + 1;
+    try {
+      const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${id}`);
+      if (!res.ok) throw new Error();
+      renderPokemon(await res.json());
+    } catch {
+      document.getElementById('error-msg').classList.add('visible');
+    } finally {
+      isFetching = false;
+      btn.disabled = false;
+      btn.classList.remove('spinning');
+      loadEl.classList.remove('visible');
+    }
+  }
+
+  function renderPokemon(data) {
+    setTypeColor(data.types[0].type.name);
+    document.getElementById('dex-number').textContent = '#' + String(data.id).padStart(3,'0');
+    const spriteUrl = data.sprites.other?.['official-artwork']?.front_default || data.sprites.front_default;
+    const spriteEl = document.getElementById('sprite');
+    const img = new Image();
+    img.onload = () => { spriteEl.src = spriteUrl; spriteEl.classList.remove('loading'); };
+    img.src = spriteUrl;
+    document.getElementById('pokemon-name').textContent = data.name;
+    document.getElementById('types').innerHTML = data.types.map(t =>
+      `<span class="type-badge" style="background:${TYPE_COLORS[t.type.name]||'#607d8b'}">${t.type.name}</span>`
+    ).join('');
+    document.getElementById('height').textContent   = (data.height / 10).toFixed(1) + 'm';
+    document.getElementById('weight').textContent   = (data.weight / 10).toFixed(1) + 'kg';
+    document.getElementById('base-exp').textContent = data.base_experience ?? '—';
+    document.getElementById('stats').innerHTML = data.stats.map(s => `
+      <div class="stat-row">
+        <span class="stat-name">${STAT_LABELS[s.stat.name] || s.stat.name}</span>
+        <span class="stat-num">${s.base_stat}</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.min(s.base_stat/200*100,100)}%"></div></div>
+      </div>`).join('');
+    document.getElementById('abilities').innerHTML = data.abilities.map(a =>
+      `<span class="ability-badge${a.is_hidden?' hidden':''}">${a.ability.name}${a.is_hidden?' ✦':''}</span>`
+    ).join('');
+    document.getElementById('pokemon-data').classList.remove('hidden');
+    document.title = `#${String(data.id).padStart(3,'0')} ${data.name} — Random Pokémon`;
+  }
+
+  document.getElementById('roll-btn').addEventListener('click', fetchRandom);
+  document.addEventListener('keydown', e => { if (e.code==='Space'||e.code==='Enter') { e.preventDefault(); fetchRandom(); } });
+  fetchRandom();
+</script>
+</body>
+</html>
